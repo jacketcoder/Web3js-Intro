@@ -1,6 +1,7 @@
 require('dotenv').config()
 //getting global web3 instance
 const Web3=require('web3')
+var Tx     = require('ethereumjs-tx')
 //url of infura node
 const rpcURL="https://ropsten.infura.io/"+process.env.INFURA_ID;
 console.log(rpcURL)
@@ -18,7 +19,34 @@ const abi = [{"constant":true,"inputs":[],"name":"mintingFinished","outputs":[{"
 const address = process.env.CONTRACT_ADDRESS
 const contract = new web3.eth.Contract(abi, address)
 //console.log(contract.methods)
+// contract.methods.totalSupply().call((err, result) => { console.log(result) })
+// contract.methods.name().call((err, result) => { console.log(result) })
+// contract.methods.symbol().call((err, result) => { console.log(result) })
 
-contract.methods.totalSupply().call((err, result) => { console.log(result) })
-contract.methods.name().call((err, result) => { console.log(result) })
-contract.methods.symbol().call((err, result) => { console.log(result) })
+//making private key sign the transaction by converting them to string of binary data with a Buffer
+const privateKey1=Buffer.from(process.env.PRIVATE_KEY1,'hex')
+const privateKey2=Buffer.from(process.env.PRIVATE_KEY2,'hex')
+
+//build the transaction object
+web3.eth.getTransactionCount(process.env.ACCOUNT1,(err,txCount)=>{
+    const txObject={
+        nonce:web3.utils.toHex(txCount),
+        to:process.env.ACCOUNT2,
+        value:web3.utils.toHex(web3.utils.toWei('.1','ether')),
+        gasLimit:web3.utils.toHex(21000),
+        gasPrice: web3.utils.toHex(web3.utils.toWei('10', 'gwei'))
+    }
+
+    //sign transactions
+    const tx=new Tx(txObject)
+    tx.sign(privateKey1)
+
+    const serializedTx = tx.serialize()
+    const raw = '0x' + serializedTx.toString('hex')
+
+    // Broadcast the transaction
+    web3.eth.sendSignedTransaction(raw, (err, txHash) => {
+        console.log('txHash:', txHash)
+        // Now go check etherscan to see the transaction!
+    })
+})
